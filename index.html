@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Body Tracker">
+<meta name="theme-color" content="#0f0d09">
+<title>Body Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg:#0f0d09; --gold:#e8c547; --red:#e87347; --green:#47e8a8;
+    --blue:#47a8e8; --purple:#c847e8; --pink:#e84778; --orange:#e8a847;
+    --text:#f0ece0; --muted:#8a8070; --dim:#6a6050;
+    --border:rgba(255,255,255,0.07); --card:rgba(255,255,255,0.04);
+    --safe-top:env(safe-area-inset-top,0px); --safe-bottom:env(safe-area-inset-bottom,0px);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;background:var(--bg);color:var(--text);font-family:'JetBrains Mono',monospace;overflow:hidden;}
+
+/* ── SETUP SCREEN ── */
+#setup{position:fixed;inset:0;background:var(–bg);z-index:100;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-top:var(–safe-top);}
+.setup-wrap{max-width:460px;margin:0 auto;padding:36px 20px 60px;}
+.setup-logo{font-family:‘Syne’,sans-serif;font-size:26px;font-weight:800;color:var(–gold);margin-bottom:4px;}
+.setup-sub{font-size:10px;color:var(–muted);letter-spacing:0.14em;text-transform:uppercase;margin-bottom:30px;}
+.setup-title{font-family:‘Syne’,sans-serif;font-size:17px;font-weight:700;margin-bottom:6px;}
+.setup-desc{font-size:11px;color:var(–muted);margin-bottom:22px;line-height:1.6;}
+.setup-label{font-size:10px;color:var(–muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;display:block;}
+.setup-input{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);border-radius:10px;color:var(–text);padding:13px 14px;font-size:16px;width:100%;outline:none;font-family:inherit;-webkit-appearance:none;margin-bottom:12px;}
+.setup-input:focus{border-color:rgba(232,197,71,0.5);}
+.setup-input::placeholder{color:var(–dim);}
+.setup-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.setup-select{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);border-radius:10px;color:var(–text);padding:13px 14px;font-size:15px;width:100%;outline:none;font-family:inherit;-webkit-appearance:none;margin-bottom:12px;}
+.setup-select option{background:#1a1710;}
+.setup-hint{font-size:10px;color:var(–dim);margin:-6px 0 12px;line-height:1.5;}
+.setup-divider{font-size:9px;color:var(–muted);text-transform:uppercase;letter-spacing:0.12em;margin:18px 0 10px;padding-top:10px;border-top:1px solid var(–border);}
+.setup-btn{width:100%;background:var(–gold);border:none;color:#0f0d09;border-radius:10px;padding:15px;font-size:13px;font-weight:700;cursor:pointer;font-family:‘Syne’,sans-serif;letter-spacing:0.08em;text-transform:uppercase;margin-top:10px;}
+.setup-btn:active{opacity:0.85;}
+.tdee-preview{background:rgba(232,197,71,0.07);border:1px solid rgba(232,197,71,0.2);border-radius:10px;padding:12px 14px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;}
+.tdee-preview-label{font-size:10px;color:var(–muted);}
+.tdee-preview-val{font-family:‘Syne’,sans-serif;font-size:20px;font-weight:800;color:var(–gold);}
+
+/* ── MAIN APP ── */
+#app{display:flex;flex-direction:column;height:100%;padding-top:var(–safe-top);}
+.header{padding:14px 18px 12px;border-bottom:1px solid rgba(232,197,71,0.2);background:rgba(232,197,71,0.03);display:flex;justify-content:space-between;align-items:center;flex-shrink:0;}
+.header-left .eyebrow{font-size:9px;color:var(–muted);letter-spacing:0.15em;text-transform:uppercase;}
+.header-left .title{font-family:‘Syne’,sans-serif;font-size:18px;font-weight:800;color:var(–gold);}
+.header-right .status{font-size:9px;color:var(–green);margin-bottom:1px;}
+.header-right .last-date{font-size:11px;color:#c0b890;}
+.nav{display:flex;border-bottom:1px solid var(–border);padding:0 8px;flex-shrink:0;}
+.nav-btn{flex:1;background:none;border:none;color:var(–dim);padding:11px 2px 9px;font-size:9px;cursor:pointer;text-transform:uppercase;letter-spacing:0.07em;border-bottom:2px solid transparent;font-family:inherit;}
+.nav-btn.active{color:var(–gold);border-bottom-color:var(–gold);}
+.content{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px 14px calc(14px + var(–safe-bottom));}
+
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:7px;}
+.kpi{background:var(–card);border:1px solid var(–border);border-radius:11px;padding:11px 9px;}
+.kpi-label{font-size:9px;color:var(–muted);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:3px;}
+.kpi-value{font-family:‘Syne’,sans-serif;font-size:15px;font-weight:700;line-height:1.1;}
+.kpi-sub{font-size:9px;color:var(–dim);margin-top:2px;}
+.sec{font-size:9px;color:var(–muted);text-transform:uppercase;letter-spacing:0.1em;margin:12px 0 7px;}
+.measure{background:rgba(255,255,255,0.03);border:1px solid var(–border);border-radius:9px;padding:9px 11px;display:flex;justify-content:space-between;align-items:center;}
+.m-label{font-size:9px;color:var(–muted);margin-bottom:1px;}
+.m-value{font-size:14px;font-weight:600;}
+.m-unit{font-size:9px;color:var(–dim);margin-left:1px;}
+.m-goal{font-size:9px;color:var(–red);margin-top:1px;}
+.m-delta{font-size:12px;font-weight:700;}
+.nut-box{background:rgba(232,197,71,0.05);border:1px solid rgba(232,197,71,0.18);border-radius:11px;padding:13px;margin-top:11px;}
+.nut-label{font-size:9px;color:var(–muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:10px;}
+.ni-label{font-size:9px;color:var(–muted);margin-bottom:2px;text-align:center;}
+.ni-value{font-family:‘Syne’,sans-serif;font-size:14px;font-weight:700;color:var(–gold);text-align:center;}
+.ni-unit{font-size:9px;color:var(–muted);}
+.nut-badge{margin-top:9px;padding:6px 9px;background:rgba(71,232,168,0.08);border-radius:6px;font-size:10px;color:var(–green);}
+
+.pill{background:var(–card);border:1px solid rgba(255,255,255,0.1);color:#a09880;border-radius:20px;padding:5px 10px;font-size:9px;cursor:pointer;font-family:inherit;text-transform:uppercase;letter-spacing:0.05em;}
+.pill.active{font-weight:700;}
+.pills{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px;}
+.chart-wrap{background:rgba(255,255,255,0.03);border:1px solid var(–border);border-radius:11px;padding:12px 6px 8px;}
+.chart-label{font-size:9px;color:var(–muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px;padding-left:6px;}
+.chart-canvas-wrap{position:relative;height:170px;}
+.chart-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-top:9px;}
+.chart-stat{background:var(–card);border:1px solid var(–border);border-radius:9px;padding:9px;text-align:center;}
+.cs-label{font-size:9px;color:var(–muted);margin-bottom:3px;}
+.cs-value{font-size:11px;font-weight:700;}
+.chart-empty{text-align:center;color:var(–dim);padding:40px 16px;font-size:11px;background:rgba(255,255,255,0.02);border-radius:11px;border:1px solid var(–border);line-height:1.7;}
+
+.history-entry{background:rgba(255,255,255,0.03);border:1px solid var(–border);border-radius:10px;padding:11px;margin-bottom:7px;}
+.history-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
+.history-date{font-family:‘Syne’,sans-serif;font-weight:700;color:var(–gold);font-size:12px;}
+.history-note{font-size:9px;color:var(–dim);font-style:italic;}
+.del-btn{background:none;border:none;color:var(–red);cursor:pointer;font-size:14px;padding:0 2px;}
+.hm{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;}
+.hm-item{font-size:9px;}
+.hm-k{color:var(–dim);}
+.hm-v{color:#c0b890;}
+
+.fl{font-size:9px;color:var(–muted);text-transform:uppercase;letter-spacing:0.1em;margin:12px 0 5px;}
+.fi{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:var(–text);padding:9px 11px;font-size:15px;width:100%;outline:none;font-family:inherit;-webkit-appearance:none;}
+.fi:focus{border-color:rgba(232,197,71,0.4);}
+.fi::placeholder{color:var(–dim);font-size:13px;}
+.save-btn{width:100%;background:var(–gold);border:none;color:#0f0d09;border-radius:10px;padding:14px;font-size:13px;font-weight:700;cursor:pointer;font-family:‘Syne’,sans-serif;letter-spacing:0.08em;text-transform:uppercase;margin-top:14px;transition:background 0.3s;}
+.save-btn.saved{background:var(–green);}
+
+.act-btn{width:100%;background:var(–card);border:1px solid var(–border);color:var(–text);border-radius:8px;padding:11px;font-size:11px;cursor:pointer;font-family:inherit;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;}
+.act-btn.danger{color:var(–red);border-color:rgba(232,115,71,0.3);}
+
+.settings-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(–border);}
+.settings-row:last-child{border-bottom:none;}
+.sk{font-size:11px;color:var(–muted);}
+.sv{font-size:12px;font-weight:600;}
+
+.toast{position:fixed;bottom:calc(20px + var(–safe-bottom));left:50%;transform:translateX(-50%) translateY(80px);background:#1a1a14;border:1px solid rgba(232,197,71,0.4);color:var(–gold);padding:10px 20px;border-radius:20px;font-size:12px;transition:transform 0.3s;z-index:300;white-space:nowrap;}
+.toast.show{transform:translateX(-50%) translateY(0);}
+.install-banner{background:rgba(71,168,232,0.08);border:1px solid rgba(71,168,232,0.2);border-radius:10px;padding:10px;margin-bottom:12px;font-size:10px;color:var(–blue);line-height:1.6;}
+</style>
+
+</head>
+<body>
+
+<!-- SETUP -->
+
+<div id="setup" style="display:none">
+  <div class="setup-wrap">
+    <div class="setup-logo">Body Tracker</div>
+    <div class="setup-sub">Setup iniziale · solo una volta</div>
+
+```
+<div class="setup-title">Chi sei?</div>
+<div class="setup-desc">I tuoi dati restano solo su questo dispositivo.</div>
+
+<label class="setup-label">Nome (opzionale)</label>
+<input class="setup-input" id="s-name" type="text" placeholder="es. Marco">
+
+<div class="setup-row">
+  <div>
+    <label class="setup-label">Età</label>
+    <input class="setup-input" id="s-age" type="number" placeholder="27" oninput="updateTDEE()">
+  </div>
+  <div>
+    <label class="setup-label">Sesso</label>
+    <select class="setup-select" id="s-sex" onchange="updateTDEE()">
+      <option value="M">Maschio ♂</option>
+      <option value="F">Femmina ♀</option>
+    </select>
+  </div>
+</div>
+
+<div class="setup-row">
+  <div>
+    <label class="setup-label">Altezza (cm)</label>
+    <input class="setup-input" id="s-height" type="number" placeholder="170" oninput="updateTDEE()">
+  </div>
+  <div>
+    <label class="setup-label">Peso attuale (kg)</label>
+    <input class="setup-input" id="s-weight" type="number" step="0.1" placeholder="75" oninput="updateTDEE()">
+  </div>
+</div>
+
+<label class="setup-label">Livello di attività</label>
+<select class="setup-select" id="s-activity" onchange="updateTDEE()">
+  <option value="1.2">Sedentario</option>
+  <option value="1.375">Leggermente attivo (1-3 gg/sett)</option>
+  <option value="1.55" selected>Moderatamente attivo (3-5 gg/sett)</option>
+  <option value="1.725">Molto attivo (6-7 gg/sett)</option>
+  <option value="1.9">Atleta / doppi allenamenti</option>
+</select>
+
+<div class="tdee-preview" id="tdee-preview" style="display:none">
+  <div>
+    <div class="tdee-preview-label">TDEE stimato</div>
+    <div style="font-size:10px;color:var(--dim)">Puoi modificarlo sotto</div>
+  </div>
+  <div class="tdee-preview-val" id="tdee-preview-val">—</div>
+</div>
+
+<label class="setup-label">TDEE reale (kcal) — se hai smartwatch</label>
+<input class="setup-input" id="s-tdee" type="number" placeholder="es. 2900">
+<div class="setup-hint">Apple Watch: calorie a riposo + calorie attive</div>
+
+<label class="setup-label">Calorie che mangi al giorno</label>
+<input class="setup-input" id="s-intake" type="number" placeholder="es. 2200">
+
+<label class="setup-label">Obiettivo principale</label>
+<select class="setup-select" id="s-goal">
+  <option value="cut">🔥 Perdere grasso</option>
+  <option value="recomp">⚖️ Ricomposizione corporea</option>
+  <option value="bulk">💪 Aumentare massa muscolare</option>
+  <option value="maintain">🎯 Mantenimento</option>
+</select>
+
+<div class="setup-divider">Prima misurazione (opzionale)</div>
+<div class="setup-row">
+  <div>
+    <label class="setup-label">% Grasso (bilancia)</label>
+    <input class="setup-input" id="s-bf" type="number" step="0.1" placeholder="">
+  </div>
+  <div>
+    <label class="setup-label">Vita (cm)</label>
+    <input class="setup-input" id="s-waist" type="number" step="0.1" placeholder="">
+  </div>
+  <div>
+    <label class="setup-label">Fianchi (cm)</label>
+    <input class="setup-input" id="s-hips" type="number" step="0.1" placeholder="">
+  </div>
+  <div>
+    <label class="setup-label">Petto (cm)</label>
+    <input class="setup-input" id="s-chest" type="number" step="0.1" placeholder="">
+  </div>
+  <div>
+    <label class="setup-label">Collo (cm)</label>
+    <input class="setup-input" id="s-neck" type="number" step="0.1" placeholder="">
+  </div>
+  <div>
+    <label class="setup-label">Bicipite (cm)</label>
+    <input class="setup-input" id="s-bicep" type="number" step="0.1" placeholder="">
+  </div>
+</div>
+
+<button class="setup-btn" onclick="finishSetup()">Inizia →</button>
+```
+
+  </div>
+</div>
+
+<!-- APP -->
+
+<div id="app" style="display:none">
+  <div class="header">
+    <div class="header-left">
+      <div class="eyebrow">Body Tracker</div>
+      <div class="title" id="app-title">—</div>
+    </div>
+    <div class="header-right">
+      <div class="status" id="status-el"></div>
+      <div class="last-date" id="last-date-el">—</div>
+    </div>
+  </div>
+  <div class="nav" id="main-nav">
+    <button class="nav-btn active" data-view="dashboard">Home</button>
+    <button class="nav-btn" data-view="grafico">Grafico</button>
+    <button class="nav-btn" data-view="storico">Storico</button>
+    <button class="nav-btn" data-view="aggiungi">+ Misura</button>
+    <button class="nav-btn" data-view="impostazioni">⚙</button>
+  </div>
+  <div class="content" id="content"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const KEY_P = 'bt-profile-v2';
+const KEY_E = 'bt-entries-v2';
+
+let profile = null;
+let entries = [];
+let view = 'dashboard';
+let metric = 'weight';
+let chartInst = null;
+
+// ── UTILS ─────────────────────────────────────────────────────────────────────
+const today = () => new Date().toISOString().split('T')[0];
+const fmtD  = s => new Date(s+'T12:00:00').toLocaleDateString('it-IT',{day:'2-digit',month:'short'});
+const ph    = k => { const l=entries[entries.length-1]; return l&&l[k]?String(l[k]):''; };
+
+function toast(msg,ms=2200){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),ms);
+}
+
+function calcBMR(w,h,a,sex){
+  return sex==='M' ? 10*w+6.25*h-5*a+5 : 10*w+6.25*h-5*a-161;
+}
+
+function calcNavyBF(neck,waist,hips,height,sex){
+  if(!neck||!waist||neck<=0||waist<=0) return null;
+  let bf;
+  if(sex==='M'){
+    const arg=waist-neck; if(arg<=0) return null;
+    bf=86.010*Math.log10(arg)-70.041*Math.log10(height)+36.76;
+  } else {
+    if(!hips||hips<=0) return null;
+    const arg=waist+hips-neck; if(arg<=0) return null;
+    bf=163.205*Math.log10(arg)-97.684*Math.log10(height)-78.387;
+  }
+  if(!isFinite(bf)||bf<3||bf>55) return null;
+  return Math.round(bf*10)/10;
+}
+
+function updateTDEE(){
+  const age=parseFloat(document.getElementById('s-age')?.value);
+  const h  =parseFloat(document.getElementById('s-height')?.value);
+  const w  =parseFloat(document.getElementById('s-weight')?.value);
+  const sex=document.getElementById('s-sex')?.value||'M';
+  const act=parseFloat(document.getElementById('s-activity')?.value)||1.55;
+  if(!age||!h||!w) return;
+  const tdee=Math.round(calcBMR(w,h,age,sex)*act);
+  const prev=document.getElementById('tdee-preview');
+  const val =document.getElementById('tdee-preview-val');
+  const inp =document.getElementById('s-tdee');
+  if(prev) prev.style.display='flex';
+  if(val)  val.textContent=tdee+' kcal';
+  if(inp&&!inp.value) inp.value=tdee;
+}
+
+// ── STORAGE ───────────────────────────────────────────────────────────────────
+function load(){
+  try{ const p=localStorage.getItem(KEY_P); if(p) profile=JSON.parse(p); }catch(e){}
+  try{ const e=localStorage.getItem(KEY_E); if(e) entries=JSON.parse(e); }catch(e){}
+}
+function saveP(){ try{ localStorage.setItem(KEY_P,JSON.stringify(profile)); }catch(e){} }
+function saveE(){
+  try{
+    localStorage.setItem(KEY_E,JSON.stringify(entries));
+    const el=document.getElementById('status-el');
+    if(el){ el.style.color='var(--green)'; el.textContent='✓ '+entries.length+' mis.'; }
+  }catch(e){ toast('⚠ Errore salvataggio'); }
+}
+
+// ── SETUP ─────────────────────────────────────────────────────────────────────
+function showSetup(){
+  document.getElementById('setup').style.display='block';
+  document.getElementById('app').style.display='none';
+}
+
+function finishSetup(){
+  const age   =parseFloat(document.getElementById('s-age').value);
+  const height=parseFloat(document.getElementById('s-height').value);
+  const weight=parseFloat(document.getElementById('s-weight').value);
+  if(!age||!height||!weight){ toast('Inserisci almeno età, altezza e peso'); return; }
+
+  const sex   =document.getElementById('s-sex').value;
+  const act   =parseFloat(document.getElementById('s-activity').value)||1.55;
+  const tdeeC =Math.round(calcBMR(weight,height,age,sex)*act);
+  const tdee  =parseInt(document.getElementById('s-tdee').value)||tdeeC;
+  const intake=parseInt(document.getElementById('s-intake').value)||(tdee-500);
+  const name  =document.getElementById('s-name').value.trim();
+  const goal  =document.getElementById('s-goal').value;
+
+  profile={name,age,sex,height,weight,activity:act,tdee,intake,goal,startDate:today()};
+  saveP();
+
+  const entry={date:today(),weight,calories:intake,proteins:Math.round(weight*1.8),steps:0,note:'Inizio'};
+  const nums={bf:'bodyFat',waist:'waist',hips:'hips',chest:'chest',neck:'neck',bicep:'bicep'};
+  Object.entries(nums).forEach(([id,key])=>{
+    const v=parseFloat(document.getElementById('s-'+id)?.value);
+    if(!isNaN(v)&&v>0) entry[key]=v;
+  });
+
+  entries=[entry];
+  saveE();
+
+  document.getElementById('setup').style.display='none';
+  startApp();
+}
+
+// ── APP INIT ──────────────────────────────────────────────────────────────────
+function startApp(){
+  document.getElementById('app').style.display='flex';
+  const name=profile?.name||(profile?.sex==='F'?'♀':'♂');
+  document.getElementById('app-title').textContent=`${name} · ${profile?.age||''}a · ${profile?.height||''}cm`;
+  const l=entries[entries.length-1];
+  if(l) document.getElementById('last-date-el').textContent=fmtD(l.date);
+  const sel=document.getElementById('status-el');
+  if(sel){ sel.style.color='var(--green)'; sel.textContent='✓ '+entries.length+' mis.'; }
+
+  document.getElementById('main-nav').addEventListener('click',e=>{
+    const b=e.target.closest('.nav-btn');
+    if(b) setView(b.dataset.view);
+  });
+  render();
+}
+
+// ── FIELDS ────────────────────────────────────────────────────────────────────
+function fields(){
+  return [
+    {key:'weight',   label:'Peso',    unit:'kg',color:'#e8c547',goal:null},
+    {key:'waist',    label:'Vita',    unit:'cm',color:'#e87347',goal:null},
+    {key:'hips',     label:'Fianchi', unit:'cm',color:'#47a8e8',goal:null},
+    {key:'chest',    label:'Petto',   unit:'cm',color:'#47e8a8',goal:null},
+    {key:'bicep',    label:'Bicipite',unit:'cm',color:'#c847e8',goal:null},
+    {key:'thighHigh',label:'Coscia',  unit:'cm',color:'#e84778',goal:null},
+    {key:'bodyFat',  label:'% Grasso',unit:'%', color:'#e8a847',goal:null},
+  ];
+}
+
+// ── RENDER ────────────────────────────────────────────────────────────────────
+function setView(v){
+  view=v;
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.view===v));
+  render();
+}
+
+function setMetric(m){ metric=m; render(); }
+
+function render(){
+  if(chartInst){ chartInst.destroy(); chartInst=null; }
+  const c=document.getElementById('content');
+  if(view==='dashboard')     c.innerHTML=vDashboard();
+  else if(view==='grafico')  { c.innerHTML=vGrafico(); drawChart(); }
+  else if(view==='storico')  c.innerHTML=vStorico();
+  else if(view==='aggiungi') c.innerHTML=vAggiungi();
+  else if(view==='impostazioni') c.innerHTML=vImpostazioni();
+}
+
+function vDashboard(){
+  const l=entries[entries.length-1];
+  const f=entries[0];
+  if(!l) return '<p style="color:var(--muted);padding:30px;text-align:center;font-size:12px">Nessuna misurazione.<br>Vai su "+ Misura".</p>';
+
+  const tdee  =profile?.tdee||2500;
+  const intake=l.calories||profile?.intake||2000;
+  const def   =tdee-intake;
+  const wLoss =def>0?((def*7)/7700).toFixed(2):'0.00';
+  const bfVal =l.bodyFat||calcNavyBF(l.neck,l.waist,l.hips,profile?.height,profile?.sex);
+  const bfSrc =l.bodyFat?'bilancia':'formula Navy';
+  const dW    =f?(l.weight-f.weight).toFixed(1):'—';
+  const prot  =l.proteins||0;
+  const tProt =Math.round((l.weight||70)*1.8);
+  const ratio =prot>0?((prot/(l.weight||70)).toFixed(1)):'—';
+  const isApp =window.navigator.standalone;
+
+  const measures=[
+    {label:'Vita',v:l.waist,p:f?.waist,u:'cm'},
+    {label:'Fianchi',v:l.hips,p:f?.hips,u:'cm'},
+    {label:'Petto',v:l.chest,p:f?.chest,u:'cm'},
+    {label:'Bicipite',v:l.bicep,p:f?.bicep,u:'cm'},
+    {label:'Coscia',v:l.thighHigh,p:f?.thighHigh,u:'cm'},
+    {label:'Collo',v:l.neck,p:f?.neck,u:'cm'},
+  ].filter(m=>m.v);
+
+  return `
+    ${!isApp?`<div class="install-banner">📱 <strong>Installa:</strong> Safari → Condividi → "Aggiungi a schermata Home"</div>`:''}
+    <div class="grid-3" style="margin-bottom:10px">
+      <div class="kpi"><div class="kpi-label">Peso</div><div class="kpi-value" style="color:#e8c547">${l.weight} kg</div><div class="kpi-sub">${dW!=='—'?(parseFloat(dW)>=0?'+':'')+dW+' kg':''}</div></div>
+      <div class="kpi"><div class="kpi-label">Grasso</div><div class="kpi-value" style="color:#e8a847">${bfVal?bfVal+'%':'—'}</div><div class="kpi-sub">${bfVal?bfSrc:'—'}</div></div>
+      <div class="kpi"><div class="kpi-label">Deficit</div><div class="kpi-value" style="color:#47e8a8">${def>0?'-'+def:'+'+Math.abs(def)}</div><div class="kpi-sub">${def>0?'~'+wLoss+' kg/s':'surplus'}</div></div>
+    </div>
+    ${measures.length?`
+    <div class="sec">Misure corporee</div>
+    <div class="grid-2">
+      ${measures.map(m=>{
+        const d=(m.v&&m.p)?(m.v-m.p):null;
+        const dc=d===null?'':d<0?'#47e8a8':d>0?'#e87347':'#8a8070';
+        return `<div class="measure">
+          <div><div class="m-label">${m.label}</div><div class="m-value">${m.v}<span class="m-unit">${m.u}</span></div></div>
+          ${d!==null?`<div class="m-delta" style="color:${dc}">${d>0?'+':''}${d.toFixed(1)}</div>`:''}
+        </div>`;
+      }).join('')}
+    </div>`:''}
+    <div class="nut-box">
+      <div class="nut-label">Nutrizione</div>
+      <div class="grid-3">
+        <div><div class="ni-label">TDEE</div><div class="ni-value">${tdee}<span class="ni-unit">kcal</span></div></div>
+        <div><div class="ni-label">Intake</div><div class="ni-value">${intake}<span class="ni-unit">kcal</span></div></div>
+        <div><div class="ni-label">Proteine</div><div class="ni-value">${prot||'—'}<span class="ni-unit">g</span></div></div>
+      </div>
+      ${prot?`<div class="nut-badge">✓ ${ratio}g/kg · Target ≥${tProt}g</div>`:''}
+    </div>
+  `;
+}
+
+function vGrafico(){
+  const ff=fields();
+  const f=ff.find(x=>x.key===metric);
+  const pts=entries.filter(e=>{const v=e[metric];return typeof v==='number'&&v>0&&isFinite(v);});
+  const pillsHtml=ff.map(x=>`
+    <button class="pill ${metric===x.key?'active':''}"
+      style="${metric===x.key?`background:${x.color};border-color:${x.color};color:#0f0d09`:''}"
+      onclick="setMetric('${x.key}')">${x.label}</button>
+  `).join('');
+  let stats='';
+  if(pts.length>=2){
+    const vals=pts.map(e=>e[metric]);
+    const d=vals[vals.length-1]-vals[0];
+    const dc=d<0?'#47e8a8':d>0?'#e87347':'#8a8070';
+    stats=`<div class="chart-stats">
+      <div class="chart-stat"><div class="cs-label">Inizio</div><div class="cs-value">${vals[0]} ${f.unit}</div></div>
+      <div class="chart-stat"><div class="cs-label">Attuale</div><div class="cs-value">${vals[vals.length-1]} ${f.unit}</div></div>
+      <div class="chart-stat"><div class="cs-label">Totale</div><div class="cs-value" style="color:${dc}">${d>=0?'+':''}${d.toFixed(1)} ${f.unit}</div></div>
+    </div>`;
+  }
+  return `
+    <div class="pills">${pillsHtml}</div>
+    ${pts.length<2
+      ?`<div class="chart-empty">Aggiungi almeno 2 misurazioni di<br><span style="color:${f.color}">${f.label}</span><br>per vedere il grafico.</div>`
+      :`<div class="chart-wrap">
+          <div class="chart-label">${f.label} — ${pts.length} misurazioni</div>
+          <div class="chart-canvas-wrap"><canvas id="mainChart"></canvas></div>
+        </div>${stats}`
+    }
+  `;
+}
+
+function vStorico(){
+  if(!entries.length) return '<p style="color:var(--muted);font-size:12px;text-align:center;padding:40px 0">Nessuna misurazione.</p>';
+  return `
+    <p style="font-size:10px;color:var(--muted);margin-bottom:10px">${entries.length} misurazioni · tocca 🗑 per eliminare</p>
+    ${[...entries].reverse().map(e=>`
+      <div class="history-entry">
+        <div class="history-header">
+          <div class="history-date">${fmtD(e.date)}</div>
+          <div style="display:flex;gap:8px;align-items:center">
+            ${e.note?`<div class="history-note">${e.note}</div>`:''}
+            <button class="del-btn" onclick="delEntry('${e.date}')">🗑</button>
+          </div>
+        </div>
+        <div class="hm">
+          ${[{l:'Peso',v:e.weight,u:'kg'},{l:'Vita',v:e.waist,u:'cm'},{l:'Fianchi',v:e.hips,u:'cm'},{l:'Petto',v:e.chest,u:'cm'},{l:'Bicipite',v:e.bicep,u:'cm'},{l:'Grasso',v:e.bodyFat,u:'%'}]
+            .filter(m=>m.v)
+            .map(m=>`<div class="hm-item"><span class="hm-k">${m.l}: </span><span class="hm-v">${m.v}${m.u}</span></div>`)
+            .join('')}
+        </div>
+      </div>
+    `).join('')}
+    <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
+      <button class="act-btn" onclick="exportData()">📤 Esporta JSON</button>
+      <button class="act-btn" onclick="document.getElementById('imp-file').click()">📥 Importa JSON</button>
+      <input type="file" id="imp-file" accept=".json" style="display:none" onchange="importData(event)">
+    </div>
+  `;
+}
+
+function vAggiungi(){
+  return `
+    <p style="font-size:10px;color:var(--muted);margin-bottom:12px">Compila solo i campi misurati. I valori precedenti vengono mantenuti.</p>
+    <div class="fl">Data</div>
+    <input type="date" class="fi" id="f-date" value="${today()}">
+
+    <div class="fl">Peso & Composizione</div>
+    <div class="grid-2">
+      <div><label class="fl" style="margin-top:0">Peso (kg)</label><input type="number" step="0.1" class="fi" id="f-weight" placeholder="${ph('weight')}"></div>
+      <div><label class="fl" style="margin-top:0">% Grasso</label><input type="number" step="0.1" class="fi" id="f-bodyFat" placeholder="${ph('bodyFat')}"></div>
+      <div><label class="fl" style="margin-top:0">Collo (cm)</label><input type="number" step="0.1" class="fi" id="f-neck" placeholder="${ph('neck')}"></div>
+    </div>
+
+    <div class="fl">Circonferenze (cm)</div>
+    <div class="grid-2">
+      ${[['chest','Petto'],['bicep','Bicipite'],['waistHigh','Vita Alta'],['waist','Vita'],['waistLow','Vita Bassa'],['hips','Fianchi'],['thighHigh','Coscia Alta'],['thigh','Coscia'],['thighLow','Coscia Bassa']]
+        .map(([k,l])=>`<div><label class="fl" style="margin-top:0">${l}</label><input type="number" step="0.1" class="fi" id="f-${k}" placeholder="${ph(k)}"></div>`)
+        .join('')}
+    </div>
+
+    <div class="fl">Nutrizione & Attività</div>
+    <div class="grid-3">
+      <div><label class="fl" style="margin-top:0">Calorie</label><input type="number" class="fi" id="f-calories" placeholder="${ph('calories')||profile?.intake||''}"></div>
+      <div><label class="fl" style="margin-top:0">Proteine g</label><input type="number" class="fi" id="f-proteins" placeholder="${ph('proteins')}"></div>
+      <div><label class="fl" style="margin-top:0">Passi</label><input type="number" class="fi" id="f-steps" placeholder="${ph('steps')}"></div>
+    </div>
+
+    <div class="fl">Nota</div>
+    <input type="text" class="fi" id="f-note" placeholder="es. Settimana difficile...">
+
+    <button class="save-btn" id="save-btn" onclick="saveEntry()">Salva misurazione</button>
+  `;
+}
+
+function vImpostazioni(){
+  if(!profile) return '';
+  const goalMap={cut:'Perdere grasso',recomp:'Ricomposizione',bulk:'Aumentare massa',maintain:'Mantenimento'};
+  return `
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:11px;padding:13px;margin-bottom:10px">
+      <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:11px">Profilo</div>
+      ${[['Nome',profile.name||'—'],['Età',profile.age+' anni'],['Sesso',profile.sex==='M'?'Maschio':'Femmina'],['Altezza',profile.height+' cm'],['Obiettivo',goalMap[profile.goal]||'—']]
+        .map(([k,v])=>`<div class="settings-row"><span class="sk">${k}</span><span class="sv">${v}</span></div>`).join('')}
+    </div>
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:11px;padding:13px;margin-bottom:10px">
+      <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:11px">Modifica calorie</div>
+      <div class="grid-2" style="margin-bottom:10px">
+        <div><label class="fl" style="margin-top:0">TDEE (kcal)</label><input type="number" class="fi" id="s2-tdee" value="${profile.tdee}"></div>
+        <div><label class="fl" style="margin-top:0">Intake (kcal)</label><input type="number" class="fi" id="s2-intake" value="${profile.intake}"></div>
+      </div>
+      <button class="act-btn" onclick="updateCals()">Aggiorna</button>
+    </div>
+    <button class="act-btn" onclick="exportData()">📤 Esporta dati</button>
+    <button class="act-btn" onclick="document.getElementById('imp-file2').click()">📥 Importa dati</button>
+    <input type="file" id="imp-file2" accept=".json" style="display:none" onchange="importData(event)">
+    <button class="act-btn danger" style="margin-top:6px" onclick="confirmReset()">🗑 Reset completo</button>
+  `;
+}
+
+// ── CHART ─────────────────────────────────────────────────────────────────────
+function drawChart(){
+  const canvas=document.getElementById('mainChart');
+  if(!canvas) return;
+  if(chartInst){ chartInst.destroy(); chartInst=null; }
+  const ff=fields();
+  const f=ff.find(x=>x.key===metric);
+  const pts=entries.filter(e=>{const v=e[metric];return typeof v==='number'&&v>0&&isFinite(v);});
+  chartInst=new Chart(canvas,{
+    type:'line',
+    data:{
+      labels:pts.map(e=>fmtD(e.date)),
+      datasets:[{data:pts.map(e=>e[metric]),borderColor:f.color,backgroundColor:f.color+'18',borderWidth:2.5,pointBackgroundColor:f.color,pointRadius:5,pointHoverRadius:7,tension:0.3,fill:true}]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{backgroundColor:'#1a1710',borderColor:'rgba(232,197,71,0.3)',borderWidth:1,titleColor:'#e8c547',bodyColor:'#f0ece0',callbacks:{label:ctx=>`${ctx.parsed.y} ${f.unit}`}}},
+      scales:{x:{grid:{color:'rgba(255,255,255,0.05)'},ticks:{color:'#6a6050',font:{size:9,family:'JetBrains Mono'}}},y:{grid:{color:'rgba(255,255,255,0.05)'},ticks:{color:'#6a6050',font:{size:9,family:'JetBrains Mono'}}}}
+    }
+  });
+}
+
+// ── ACTIONS ───────────────────────────────────────────────────────────────────
+function saveEntry(){
+  const date=document.getElementById('f-date')?.value;
+  if(!date){ toast('Inserisci una data'); return; }
+  const existing=entries.find(e=>e.date===date)||{};
+  const entry={...existing,date,note:document.getElementById('f-note')?.value||''};
+  ['weight','bodyFat','neck','chest','bicep','waistHigh','waist','waistLow','hips','thighHigh','thigh','thighLow','calories','proteins','steps'].forEach(k=>{
+    const el=document.getElementById('f-'+k);
+    if(!el||el.value==='') return;
+    const p=parseFloat(el.value);
+    if(!isNaN(p)) entry[k]=p;
+  });
+  entries=[...entries.filter(e=>e.date!==date),entry].sort((a,b)=>a.date.localeCompare(b.date));
+  saveE();
+  document.getElementById('last-date-el').textContent=fmtD(entries[entries.length-1].date);
+  const btn=document.getElementById('save-btn');
+  if(btn){btn.textContent='✓ Salvato!';btn.classList.add('saved');}
+  toast('✓ Salvato!');
+  setTimeout(()=>setView('dashboard'),1000);
+}
+
+function delEntry(date){
+  if(!confirm('Eliminare la misurazione del '+fmtD(date)+'?')) return;
+  entries=entries.filter(e=>e.date!==date);
+  saveE(); render(); toast('Eliminata');
+}
+
+function updateCals(){
+  const t=parseInt(document.getElementById('s2-tdee')?.value);
+  const i=parseInt(document.getElementById('s2-intake')?.value);
+  if(!t||!i){ toast('Inserisci entrambi i valori'); return; }
+  profile.tdee=t; profile.intake=i; saveP(); toast('✓ Aggiornato!');
+}
+
+function exportData(){
+  const blob=new Blob([JSON.stringify({profile,entries},null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download='body-tracker-'+today()+'.json'; a.click();
+  URL.revokeObjectURL(url);
+  toast('📤 Esportato!');
+}
+
+function importData(e){
+  const file=e.target.files[0]; if(!file) return;
+  const r=new FileReader();
+  r.onload=ev=>{
+    try{
+      const d=JSON.parse(ev.target.result);
+      if(d.entries&&Array.isArray(d.entries)){
+        entries=d.entries.sort((a,b)=>a.date.localeCompare(b.date));
+        if(d.profile){profile=d.profile;saveP();}
+        saveE(); render(); toast('✓ '+entries.length+' misurazioni importate!');
+      } else if(Array.isArray(d)){
+        entries=d.sort((a,b)=>a.date.localeCompare(b.date));
+        saveE(); render(); toast('✓ '+entries.length+' importate!');
+      } else throw 0;
+    }catch{ toast('❌ File non valido'); }
+  };
+  r.readAsText(file);
+}
+
+function confirmReset(){
+  if(!confirm('Cancellare tutto? Profilo e dati verranno eliminati.')) return;
+  localStorage.removeItem(KEY_P);
+  localStorage.removeItem(KEY_E);
+  location.reload();
+}
+
+// ── BOOT ──────────────────────────────────────────────────────────────────────
+load();
+if(!profile){ showSetup(); } else { startApp(); }
+</script>
+
+</body>
+</html>
