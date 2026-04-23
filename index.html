@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Body Tracker">
+<meta name="theme-color" content="#0f0d09">
+<title>Body Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg:#0f0d09; --bg2:#161410; --gold:#e8c547; --gold2:rgba(232,197,71,0.12);
+    --red:#e87347; --green:#47e8a8; --blue:#47a8e8; --purple:#c847e8;
+    --pink:#e84778; --orange:#e8a847; --text:#f0ece0; --muted:#8a8070;
+    --dim:#6a6050; --border:rgba(255,255,255,0.07); --card:rgba(255,255,255,0.04);
+    --safe-top:env(safe-area-inset-top,0px); --safe-bottom:env(safe-area-inset-bottom,0px);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;background:var(--bg);color:var(--text);font-family:'JetBrains Mono',monospace;overflow:hidden;}
+  #app{display:flex;flex-direction:column;height:100%;padding-top:var(--safe-top);}
+
+/* ── ONBOARDING ── */
+#onboarding{position:fixed;inset:0;background:var(–bg);z-index:200;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:var(–safe-top) 0 var(–safe-bottom);}
+.ob-wrap{max-width:480px;margin:0 auto;padding:32px 20px 40px;}
+.ob-logo{font-family:‘Syne’,sans-serif;font-size:28px;font-weight:800;color:var(–gold);margin-bottom:4px;}
+.ob-sub{font-size:11px;color:var(–muted);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:32px;}
+.ob-step{display:none;} .ob-step.active{display:block;}
+.ob-title{font-family:‘Syne’,sans-serif;font-size:18px;font-weight:700;color:var(–text);margin-bottom:6px;}
+.ob-desc{font-size:11px;color:var(–muted);margin-bottom:24px;line-height:1.6;}
+.ob-field{margin-bottom:14px;}
+.ob-label{font-size:10px;color:var(–muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:5px;display:block;}
+.ob-input{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);border-radius:10px;color:var(–text);padding:12px 14px;font-size:16px;width:100%;outline:none;font-family:inherit;transition:border-color 0.2s;-webkit-appearance:none;}
+.ob-input:focus{border-color:rgba(232,197,71,0.5);}
+.ob-input::placeholder{color:var(–dim);}
+.ob-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.ob-select{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);border-radius:10px;color:var(–text);padding:12px 14px;font-size:15px;width:100%;outline:none;font-family:inherit;-webkit-appearance:none;appearance:none;background-image:url(“data:image/svg+xml,%3Csvg xmlns=‘http://www.w3.org/2000/svg’ width=‘12’ height=‘8’ viewBox=‘0 0 12 8’%3E%3Cpath d=‘M1 1l5 5 5-5’ stroke=’%238a8070’ stroke-width=‘1.5’ fill=‘none’/%3E%3C/svg%3E”);background-repeat:no-repeat;background-position:right 14px center;}
+.ob-select option{background:#1a1710;color:var(–text);}
+.ob-radio-group{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.ob-radio{position:relative;}
+.ob-radio input{position:absolute;opacity:0;width:0;height:0;}
+.ob-radio label{display:block;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:12px;text-align:center;cursor:pointer;transition:all 0.2s;font-size:13px;}
+.ob-radio input:checked + label{background:var(–gold2);border-color:var(–gold);color:var(–gold);}
+.ob-hint{font-size:10px;color:var(–dim);margin-top:6px;line-height:1.5;}
+.ob-tdee-result{background:rgba(232,197,71,0.08);border:1px solid rgba(232,197,71,0.2);border-radius:10px;padding:14px;margin-top:12px;text-align:center;display:none;}
+.ob-tdee-result .tdee-val{font-family:‘Syne’,sans-serif;font-size:28px;font-weight:800;color:var(–gold);}
+.ob-tdee-result .tdee-label{font-size:10px;color:var(–muted);margin-top:2px;}
+.ob-btn{width:100%;background:var(–gold);border:none;color:#0f0d09;border-radius:10px;padding:15px;font-size:13px;font-weight:700;cursor:pointer;font-family:‘Syne’,sans-serif;letter-spacing:0.08em;text-transform:uppercase;margin-top:20px;transition:opacity 0.2s;}
+.ob-btn:active{opacity:0.85;}
+.ob-btn-ghost{background:transparent;border:1px solid var(–border);color:var(–muted);}
+.ob-progress{display:flex;gap:6px;margin-bottom:28px;}
+.ob-dot{height:3px;flex:1;border-radius:2px;background:var(–border);transition:background 0.3s;}
+.ob-dot.done{background:var(–gold);}
+
+/* ── MAIN APP ── */
+.header{padding:14px 20px 12px;border-bottom:1px solid rgba(232,197,71,0.2);background:rgba(232,197,71,0.03);display:flex;justify-content:space-between;align-items:center;flex-shrink:0;}
+.header-left .eyebrow{font-size:9px;color:var(–muted);letter-spacing:0.18em;text-transform:uppercase;}
+.header-left .title{font-family:‘Syne’,sans-serif;font-size:18px;font-weight:800;color:var(–gold);line-height:1.1;}
+.header-right{text-align:right;}
+.header-right .status{font-size:9px;margin-bottom:2px;}
+.header-right .last-date{font-size:12px;color:#c0b890;}
+.nav{display:flex;border-bottom:1px solid var(–border);padding:0 8px;flex-shrink:0;background:var(–bg);}
+.nav-btn{flex:1;background:none;border:none;color:var(–dim);padding:11px 2px 9px;font-size:9px;cursor:pointer;text-transform:uppercase;letter-spacing:0.08em;border-bottom:2px solid transparent;font-family:inherit;transition:color 0.2s;}
+.nav-btn.active{color:var(–gold);border-bottom-color:var(–gold);}
+.content{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px 14px calc(14px + var(–safe-bottom));}
+
+/* cards */
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:7px;}
+.kpi{background:var(–card);border:1px solid var(–border);border-radius:11px;padding:11px 9px;}
+.kpi .kpi-label{font-size:9px;color:var(–muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:3px;}
+.kpi .kpi-value{font-family:‘Syne’,sans-serif;font-size:15px;font-weight:700;line-height:1.1;}
+.kpi .kpi-sub{font-size:9px;color:var(–dim);margin-top:2px;}
+.section-label{font-size:9px;color:var(–muted);text-transform:uppercase;letter-spacing:0.12em;margin:13px 0 7px;}
+.measure{background:rgba(255,255,255,0.03);border:1px solid var(–border);border-radius:9px;padding:9px 11px;display:flex;justify-content:space-between;align-items:center;}
+.measure .m-label{font-size:9px;color:var(–muted);margin-bottom:2px;}
+.measure .m-value{font-size:14px;font-weight:600;color:var(–text);}
+.measure .m-unit{font-size:9px;color:var(–dim);margin-left:2px;}
+.measure .m-goal{font-size:9px;color:var(–red);margin-top:1px;}
+.measure .m-delta{font-size:12px;font-weight:700;}
+.nutrition-box{background:rgba(232,197,71,0.05);border:1px solid rgba(232,197,71,0.18);border-radius:11px;padding:13px;margin-top:11px;}
+.nutrition-box .n-label{font-size:9px;color:var(–muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:10px;}
+.nutrition-item{text-align:center;}
+.nutrition-item .ni-label{font-size:9px;color:var(–muted);margin-bottom:2px;}
+.nutrition-item .ni-value{font-family:‘Syne’,sans-serif;font-size:14px;font-weight:700;color:var(–gold);}
+.nutrition-item .ni-unit{font-size:9px;color:var(–muted);}
+.nutrition-badge{margin-top:9px;padding:6px 9px;background:rgba(71,232,168,0.08);border-radius:6px;font-size:10px;color:var(–green);}
+
+/* chart */
+.pill{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);color:#a09880;border-radius:20px;padding:5px 10px;font-size:9px;cursor:pointer;font-family:inherit;text-transform:uppercase;letter-spacing:0.05em;transition:all 0.2s;}
+.pill.active{font-weight:700;}
+.pills{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:13px;}
+.chart-wrap{background:rgba(255,255,255,0.03);border:1px solid var(–border);border-radius:11px;padding:13px 8px 8px;}
+.chart-label{font-size:9px;color:var(–muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:9px;padding-left:4px;}
+.chart-canvas-wrap{position:relative;height:170px;}
+.chart-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-top:9px;}
+.chart-stat{background:rgba(255,255,255,0.03);border:1px solid var(–border);border-radius:9px;padding:9px;text-align:center;}
+.chart-stat .cs-label{font-size:9px;color:var(–muted);margin-bottom:3px;}
+.chart-stat .cs-value{font-size:11px;font-weight:700;}
+.chart-empty{text-align:center;color:var(–dim);padding:40px 16px;font-size:11px;background:rgba(255,255,255,0.02);border-radius:11px;border:1px solid var(–border);line-height:1.7;}
+
+/* history */
+.history-entry{background:rgba(255,255,255,0.03);border:1px solid var(–border);border-radius:10px;padding:11px;margin-bottom:7px;}
+.history-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
+.history-date{font-family:‘Syne’,sans-serif;font-weight:700;color:var(–gold);font-size:12px;}
+.history-meta{display:flex;gap:8px;align-items:center;}
+.history-note{font-size:9px;color:var(–dim);font-style:italic;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.delete-btn{background:none;border:none;color:var(–red);cursor:pointer;font-size:14px;padding:0 2px;opacity:0.7;}
+.delete-btn:active{opacity:1;}
+.history-measures{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;}
+.hm-item{font-size:9px;}
+.hm-label{color:var(–dim);}
+.hm-val{color:#c0b890;}
+
+/* form */
+.form-section{font-size:9px;color:var(–muted);text-transform:uppercase;letter-spacing:0.12em;margin:14px 0 7px;}
+.form-label{font-size:10px;color:var(–muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;display:block;}
+.form-input{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:var(–text);padding:9px 11px;font-size:15px;width:100%;outline:none;font-family:inherit;transition:border-color 0.2s;-webkit-appearance:none;}
+.form-input:focus{border-color:rgba(232,197,71,0.4);}
+.form-input::placeholder{color:var(–dim);font-size:13px;}
+.save-btn{width:100%;background:var(–gold);border:none;color:#0f0d09;border-radius:10px;padding:14px;font-size:13px;font-weight:700;cursor:pointer;font-family:‘Syne’,sans-serif;letter-spacing:0.08em;text-transform:uppercase;transition:background 0.3s,transform 0.1s;margin-top:14px;}
+.save-btn:active{transform:scale(0.98);}
+.save-btn.saved{background:var(–green);}
+
+/* settings & export */
+.settings-card{background:var(–card);border:1px solid var(–border);border-radius:11px;padding:14px;margin-bottom:10px;}
+.settings-title{font-size:10px;color:var(–muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:12px;}
+.settings-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(–border);}
+.settings-row:last-child{border-bottom:none;}
+.settings-key{font-size:11px;color:var(–muted);}
+.settings-val{font-size:12px;font-weight:600;color:var(–text);}
+.action-btn{width:100%;background:rgba(255,255,255,0.05);border:1px solid var(–border);color:var(–text);border-radius:8px;padding:11px;font-size:11px;cursor:pointer;font-family:inherit;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;transition:background 0.2s;}
+.action-btn:active{background:rgba(255,255,255,0.1);}
+.action-btn.danger{color:var(–red);border-color:rgba(232,115,71,0.3);}
+
+/* toast */
+.toast{position:fixed;bottom:calc(20px + var(–safe-bottom));left:50%;transform:translateX(-50%) translateY(80px);background:#1a1a14;border:1px solid rgba(232,197,71,0.4);color:var(–gold);padding:10px 20px;border-radius:20px;font-size:12px;transition:transform 0.3s ease;z-index:300;white-space:nowrap;}
+.toast.show{transform:translateX(-50%) translateY(0);}
+
+.install-banner{background:rgba(71,168,232,0.08);border:1px solid rgba(71,168,232,0.2);border-radius:10px;padding:11px;margin-bottom:13px;font-size:10px;color:var(–blue);line-height:1.6;}
+.install-banner strong{color:#7dd3f8;}
+</style>
+
+</head>
+<body>
+
+<!-- ONBOARDING -->
+
+<div id="onboarding" style="display:none">
+  <div class="ob-wrap">
+    <div class="ob-logo">Body Tracker</div>
+    <div class="ob-sub">Setup iniziale</div>
+    <div class="ob-progress" id="ob-progress"></div>
+
+```
+<!-- Step 1: Chi sei -->
+<div class="ob-step active" id="step-0">
+  <div class="ob-title">Chi sei?</div>
+  <div class="ob-desc">Questi dati restano solo sul tuo telefono e servono a calcolare i tuoi obiettivi.</div>
+  <div class="ob-field">
+    <label class="ob-label">Nome (opzionale)</label>
+    <input class="ob-input" id="ob-name" type="text" placeholder="es. Marco">
+  </div>
+  <div class="ob-row">
+    <div class="ob-field">
+      <label class="ob-label">Età</label>
+      <input class="ob-input" id="ob-age" type="number" placeholder="27">
+    </div>
+    <div class="ob-field">
+      <label class="ob-label">Sesso</label>
+      <select class="ob-select" id="ob-sex">
+        <option value="M">Maschio</option>
+        <option value="F">Femmina</option>
+      </select>
+    </div>
+  </div>
+  <div class="ob-row">
+    <div class="ob-field">
+      <label class="ob-label">Altezza (cm)</label>
+      <input class="ob-input" id="ob-height" type="number" placeholder="170">
+    </div>
+    <div class="ob-field">
+      <label class="ob-label">Peso attuale (kg)</label>
+      <input class="ob-input" id="ob-weight" type="number" step="0.1" placeholder="75.0">
+    </div>
+  </div>
+  <button class="ob-btn" onclick="obNext(0)">Avanti →</button>
+</div>
+
+<!-- Step 2: Attività -->
+<div class="ob-step" id="step-1">
+  <div class="ob-title">Quanto sei attivo?</div>
+  <div class="ob-desc">Seleziona il livello medio settimanale per calcolare il tuo TDEE.</div>
+  <div class="ob-field">
+    <label class="ob-label">Livello di attività</label>
+    <select class="ob-select" id="ob-activity" onchange="calcTDEE()">
+      <option value="1.2">Sedentario (poco o nessun esercizio)</option>
+      <option value="1.375">Leggermente attivo (1-3 giorni/sett)</option>
+      <option value="1.55" selected>Moderatamente attivo (3-5 giorni/sett)</option>
+      <option value="1.725">Molto attivo (6-7 giorni/sett + lavoro fisico)</option>
+      <option value="1.9">Estremamente attivo (atleta, doppi allenamenti)</option>
+    </select>
+  </div>
+  <div class="ob-field">
+    <label class="ob-label">Passi medi giornalieri</label>
+    <select class="ob-select" id="ob-steps">
+      <option value="5000">Meno di 7.000</option>
+      <option value="8000">7.000 – 10.000</option>
+      <option value="12000" selected>10.000 – 15.000</option>
+      <option value="15000">Più di 15.000</option>
+    </select>
+  </div>
+  <div class="ob-tdee-result" id="tdee-result">
+    <div class="tdee-val" id="tdee-val">—</div>
+    <div class="tdee-label">kcal/giorno stimate (TDEE)</div>
+  </div>
+  <p class="ob-hint">Puoi modificare il TDEE manualmente nel passaggio successivo se hai dati più precisi (es. Apple Watch).</p>
+  <button class="ob-btn" onclick="obNext(1)">Avanti →</button>
+  <button class="ob-btn ob-btn-ghost" style="margin-top:8px" onclick="obBack(1)">← Indietro</button>
+</div>
+
+<!-- Step 3: TDEE & Obiettivo -->
+<div class="ob-step" id="step-2">
+  <div class="ob-title">Obiettivo & calorie</div>
+  <div class="ob-desc">Conferma o correggi il TDEE e scegli il tuo obiettivo.</div>
+  <div class="ob-field">
+    <label class="ob-label">TDEE giornaliero (kcal)</label>
+    <input class="ob-input" id="ob-tdee" type="number" placeholder="2800">
+    <p class="ob-hint">Se hai Apple Watch o smartwatch, usa: calorie a riposo + calorie attive.</p>
+  </div>
+  <div class="ob-field">
+    <label class="ob-label">Calorie che mangi al giorno</label>
+    <input class="ob-input" id="ob-intake" type="number" placeholder="2200">
+  </div>
+  <div class="ob-field">
+    <label class="ob-label">Obiettivo principale</label>
+    <div class="ob-radio-group">
+      <div class="ob-radio"><input type="radio" name="ob-goal" id="goal-cut" value="cut" checked><label for="goal-cut">🔥 Perdere grasso</label></div>
+      <div class="ob-radio"><input type="radio" name="ob-goal" id="goal-recomp" value="recomp"><label for="goal-recomp">⚖️ Ricomposi&shy;zione</label></div>
+      <div class="ob-radio"><input type="radio" name="ob-goal" id="goal-bulk" value="bulk"><label for="goal-bulk">💪 Aumentare massa</label></div>
+      <div class="ob-radio"><input type="radio" name="ob-goal" id="goal-maintain" value="maintain"><label for="goal-maintain">🎯 Mantenimento</label></div>
+    </div>
+  </div>
+  <button class="ob-btn" onclick="obNext(2)">Avanti →</button>
+  <button class="ob-btn ob-btn-ghost" style="margin-top:8px" onclick="obBack(2)">← Indietro</button>
+</div>
+
+<!-- Step 4: Prima misurazione -->
+<div class="ob-step" id="step-3">
+  <div class="ob-title">Prima misurazione</div>
+  <div class="ob-desc">Inserisci i dati di partenza. Puoi compilare solo quelli che hai — il resto lo aggiungi dopo.</div>
+  <div class="ob-row">
+    <div class="ob-field">
+      <label class="ob-label">Data di oggi</label>
+      <input class="ob-input" id="ob-date" type="date">
+    </div>
+    <div class="ob-field">
+      <label class="ob-label">% Grasso (bilancia)</label>
+      <input class="ob-input" id="ob-bf" type="number" step="0.1" placeholder="es. 23.4">
+    </div>
+  </div>
+  <div class="ob-row">
+    <div class="ob-field"><label class="ob-label">Vita (cm)</label><input class="ob-input" id="ob-waist" type="number" step="0.1" placeholder=""></div>
+    <div class="ob-field"><label class="ob-label">Fianchi (cm)</label><input class="ob-input" id="ob-hips" type="number" step="0.1" placeholder=""></div>
+    <div class="ob-field"><label class="ob-label">Petto (cm)</label><input class="ob-input" id="ob-chest" type="number" step="0.1" placeholder=""></div>
+    <div class="ob-field"><label class="ob-label">Bicipite (cm)</label><input class="ob-input" id="ob-bicep" type="number" step="0.1" placeholder=""></div>
+    <div class="ob-field"><label class="ob-label">Collo (cm)</label><input class="ob-input" id="ob-neck" type="number" step="0.1" placeholder=""></div>
+    <div class="ob-field"><label class="ob-label">Coscia (cm)</label><input class="ob-input" id="ob-thigh" type="number" step="0.1" placeholder=""></div>
+  </div>
+  <button class="ob-btn" onclick="obFinish()">Inizia →</button>
+  <button class="ob-btn ob-btn-ghost" style="margin-top:8px" onclick="obBack(3)">← Indietro</button>
+</div>
+```
+
+  </div>
+</div>
+
+<!-- MAIN APP -->
+
+<div id="main-app" style="display:none">
+  <div class="header">
+    <div class="header-left">
+      <div class="eyebrow">Body Tracker</div>
+      <div class="title" id="app-title">—</div>
+    </div>
+    <div class="header-right">
+      <div class="status" id="status-text"></div>
+      <div class="last-date" id="last-date">—</div>
+    </div>
+  </div>
+  <div class="nav">
+    <button class="nav-btn active" data-view="dashboard">Home</button>
+    <button class="nav-btn" data-view="grafico">Grafico</button>
+    <button class="nav-btn" data-view="storico">Storico</button>
+    <button class="nav-btn" data-view="aggiungi">+ Aggiungi</button>
+    <button class="nav-btn" data-view="impostazioni">⚙</button>
+  </div>
+  <div class="content" id="content"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── STORAGE KEYS ──────────────────────────────────────────────────────────────
+const KEY_PROFILE = 'bt-profile-v1';
+const KEY_ENTRIES = 'bt-entries-v1';
+
+// ── STATE ─────────────────────────────────────────────────────────────────────
+let profile = null;
+let entries = [];
+let currentView = 'dashboard';
+let currentMetric = 'weight';
+let chartInstance = null;
+let obStep = 0;
+const OB_STEPS = 4;
+
+// ── UTILS ─────────────────────────────────────────────────────────────────────
+function fmtDate(s) {
+  return new Date(s+'T12:00:00').toLocaleDateString('it-IT',{day:'2-digit',month:'short'});
+}
+function today() { return new Date().toISOString().split('T')[0]; }
+
+function calcNavyBF(neck,waist,hips,height) {
+  if (!neck||!waist||!hips||!height||neck<=0||waist<=0||hips<=0) return null;
+  const sex = profile?.sex || 'M';
+  let bf;
+  if (sex === 'M') {
+    const arg = waist - neck;
+    if (arg <= 0) return null;
+    bf = 86.010 * Math.log10(arg) - 70.041 * Math.log10(height) + 36.76;
+  } else {
+    const arg = waist + hips - neck;
+    if (arg <= 0) return null;
+    bf = 163.205 * Math.log10(arg) - 97.684 * Math.log10(height) - 78.387;
+  }
+  if (!isFinite(bf) || bf < 3 || bf > 55) return null;
+  return Math.round(bf * 10) / 10;
+}
+
+function calcBMR(weight, height, age, sex) {
+  if (sex === 'M') return 10*weight + 6.25*height - 5*age + 5;
+  return 10*weight + 6.25*height - 5*age - 161;
+}
+
+function showToast(msg, duration=2200) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), duration);
+}
+
+function getLatest() { return entries[entries.length-1] || null; }
+function getFirst()  { return entries[0] || null; }
+
+function getFields() {
+  return [
+    { key:'weight',    label:'Peso',     unit:'kg', color:'#e8c547', goal: profile?.goalWeight || null },
+    { key:'waist',     label:'Vita',     unit:'cm', color:'#e87347', goal: profile?.goalWaist  || null },
+    { key:'hips',      label:'Fianchi',  unit:'cm', color:'#47a8e8', goal: null },
+    { key:'chest',     label:'Petto',    unit:'cm', color:'#47e8a8', goal: null },
+    { key:'bicep',     label:'Bicipite', unit:'cm', color:'#c847e8', goal: null },
+    { key:'thighHigh', label:'Coscia',   unit:'cm', color:'#e84778', goal: null },
+    { key:'bodyFat',   label:'% Grasso', unit:'%',  color:'#e8a847', goal: profile?.goalBF    || null },
+  ];
+}
+
+// ── PERSISTENCE ───────────────────────────────────────────────────────────────
+function loadAll() {
+  try {
+    const p = localStorage.getItem(KEY_PROFILE);
+    if (p) profile = JSON.parse(p);
+  } catch(e) {}
+  try {
+    const e = localStorage.getItem(KEY_ENTRIES);
+    if (e) entries = JSON.parse(e);
+  } catch(e) {}
+}
+
+function saveProfile() {
+  try { localStorage.setItem(KEY_PROFILE, JSON.stringify(profile)); } catch(e) {}
+}
+
+function saveEntries() {
+  try {
+    localStorage.setItem(KEY_ENTRIES, JSON.stringify(entries));
+    updateStatus();
+  } catch(e) { showToast('⚠ Errore salvataggio'); }
+}
+
+function updateStatus() {
+  const el = document.getElementById('status-text');
+  if (!el) return;
+  el.style.color = '#47e8a8';
+  el.textContent = `✓ ${entries.length} misur.`;
+}
+
+// ── ONBOARDING ────────────────────────────────────────────────────────────────
+function showOnboarding() {
+  document.getElementById('onboarding').style.display = 'block';
+  document.getElementById('main-app').style.display = 'none';
+  document.getElementById('ob-date').value = today();
+  renderObProgress();
+  calcTDEE();
+}
+
+function renderObProgress() {
+  const el = document.getElementById('ob-progress');
+  el.innerHTML = Array.from({length:OB_STEPS},(_,i) =>
+    `<div class="ob-dot ${i<=obStep?'done':''}"></div>`
+  ).join('');
+}
+
+function calcTDEE() {
+  const age    = parseFloat(document.getElementById('ob-age')?.value) || 27;
+  const height = parseFloat(document.getElementById('ob-height')?.value) || 170;
+  const weight = parseFloat(document.getElementById('ob-weight')?.value) || 75;
+  const sex    = document.getElementById('ob-sex')?.value || 'M';
+  const act    = parseFloat(document.getElementById('ob-activity')?.value) || 1.55;
+  const bmr    = calcBMR(weight, height, age, sex);
+  const tdee   = Math.round(bmr * act);
+  const el     = document.getElementById('tdee-result');
+  const valEl  = document.getElementById('tdee-val');
+  if (el && valEl) { el.style.display='block'; valEl.textContent=tdee+' kcal'; }
+  const tdeeInput = document.getElementById('ob-tdee');
+  if (tdeeInput && !tdeeInput.value) tdeeInput.value = tdee;
+  return tdee;
+}
+
+function obNext(step) {
+  if (step === 0) {
+    const age    = document.getElementById('ob-age').value;
+    const height = document.getElementById('ob-height').value;
+    const weight = document.getElementById('ob-weight').value;
+    if (!age || !height || !weight) { showToast('Compila età, altezza e peso'); return; }
+    calcTDEE();
+    const tdeeInput = document.getElementById('ob-tdee');
+    if (tdeeInput) tdeeInput.value = calcTDEE();
+  }
+  if (step === 1) { calcTDEE(); }
+
+  document.getElementById(`step-${step}`).classList.remove('active');
+  obStep = step + 1;
+  document.getElementById(`step-${obStep}`).classList.add('active');
+  renderObProgress();
+  document.getElementById('onboarding').scrollTop = 0;
+}
+
+function obBack(step) {
+  document.getElementById(`step-${step}`).classList.remove('active');
+  obStep = step - 1;
+  document.getElementById(`step-${obStep}`).classList.add('active');
+  renderObProgress();
+  document.getElementById('onboarding').scrollTop = 0;
+}
+
+function obFinish() {
+  const name   = document.getElementById('ob-name').value.trim();
+  const age    = parseFloat(document.getElementById('ob-age').value);
+  const sex    = document.getElementById('ob-sex').value;
+  const height = parseFloat(document.getElementById('ob-height').value);
+  const weight = parseFloat(document.getElementById('ob-weight').value);
+  const act    = parseFloat(document.getElementById('ob-activity').value);
+  const steps  = parseInt(document.getElementById('ob-steps').value);
+  const tdee   = parseInt(document.getElementById('ob-tdee').value) || calcTDEE();
+  const intake = parseInt(document.getElementById('ob-intake').value) || tdee - 500;
+  const goal   = document.querySelector('input[name="ob-goal"]:checked')?.value || 'cut';
+
+  profile = { name, age, sex, height, weight, activity:act, stepsAvg:steps, tdee, intake, goal,
+    goalWeight: null, goalWaist: null, goalBF: null, startDate: today() };
+  saveProfile();
+
+  // Build first entry
+  const entry = { date: document.getElementById('ob-date').value || today(), weight, calories:intake, proteins:Math.round(weight*1.8), steps, bodyFat:null, note:'Inizio' };
+  const numFields = ['bf','waist','hips','chest','bicep','neck','thigh'];
+  const keyMap    = { bf:'bodyFat', waist:'waist', hips:'hips', chest:'chest', bicep:'bicep', neck:'neck', thigh:'thighHigh' };
+  numFields.forEach(f => {
+    const val = parseFloat(document.getElementById(`ob-${f}`)?.value);
+    if (!isNaN(val) && val > 0) entry[keyMap[f]] = val;
+  });
+
+  entries = [entry];
+  saveEntries();
+
+  document.getElementById('onboarding').style.display = 'none';
+  initApp();
+}
+
+// ── MAIN APP ──────────────────────────────────────────────────────────────────
+function initApp() {
+  document.getElementById('main-app').style.display = 'flex';
+  const name = profile?.name ? profile.name : (profile?.sex === 'F' ? '♀' : '♂');
+  const age  = profile?.age || '';
+  const h    = profile?.height || '';
+  document.getElementById('app-title').textContent = `${name} · ${age}a · ${h}cm`;
+  const latest = getLatest();
+  if (latest) document.getElementById('last-date').textContent = fmtDate(latest.date);
+  updateStatus();
+  render();
+
+  document.querySelector('.nav').addEventListener('click', e => {
+    const btn = e.target.closest('.nav-btn');
+    if (btn) setView(btn.dataset.view);
+  });
+}
+
+// ── VIEWS ─────────────────────────────────────────────────────────────────────
+function renderDashboard() {
+  const latest = getLatest();
+  const first  = getFirst();
+  if (!latest) return '<p style="color:var(--muted);padding:30px;text-align:center;font-size:12px">Nessuna misurazione.<br>Vai su "+ Aggiungi".</p>';
+
+  const tdee   = profile?.tdee || 2500;
+  const intake = latest.calories || profile?.intake || 2000;
+  const deficit = tdee - intake;
+  const wLoss   = deficit > 0 ? ((deficit*7)/7700).toFixed(2) : '0.00';
+  const bfVal   = latest.bodyFat || calcNavyBF(latest.neck, latest.waist, latest.thighHigh, profile?.height);
+  const bfSrc   = latest.bodyFat ? 'bilancia' : 'formula Navy';
+  const dW      = first ? (latest.weight - first.weight).toFixed(1) : '—';
+  const protRatio = ((latest.proteins||0)/(latest.weight||1)).toFixed(1);
+  const targetProt = Math.round((latest.weight||70)*1.8);
+  const isStandalone = window.navigator.standalone;
+
+  const measures = [
+    { label:'Vita',        v:latest.waist,     p:first?.waist,     u:'cm' },
+    { label:'Fianchi',     v:latest.hips,      p:first?.hips,      u:'cm' },
+    { label:'Petto',       v:latest.chest,     p:first?.chest,     u:'cm' },
+    { label:'Bicipite',    v:latest.bicep,     p:first?.bicep,     u:'cm' },
+    { label:'Coscia',      v:latest.thighHigh, p:first?.thighHigh, u:'cm' },
+    { label:'Collo',       v:latest.neck,      p:first?.neck,      u:'cm' },
+  ].filter(m => m.v);
+
+  return `
+    ${!isStandalone ? `<div class="install-banner">📱 <strong>Installa:</strong> Safari → Condividi → "Aggiungi a schermata Home" per usarla offline!</div>` : ''}
+    <div class="grid-3" style="margin-bottom:11px">
+      <div class="kpi"><div class="kpi-label">Peso</div><div class="kpi-value" style="color:#e8c547">${latest.weight} kg</div><div class="kpi-sub">${dW !== '—' ? (dW>=0?'+':'')+dW+' kg' : '—'}</div></div>
+      <div class="kpi"><div class="kpi-label">Grasso</div><div class="kpi-value" style="color:#e8a847">${bfVal?bfVal+'%':'—'}</div><div class="kpi-sub">${bfVal?bfSrc:'—'}</div></div>
+      <div class="kpi"><div class="kpi-label">Deficit</div><div class="kpi-value" style="color:#47e8a8">${deficit>0?'-'+deficit:'+'+Math.abs(deficit)}</div><div class="kpi-sub">${deficit>0?'~'+wLoss+' kg/s':'surplus'}</div></div>
+    </div>
+    ${measures.length > 0 ? `
+    <div class="section-label">Misure corporee</div>
+    <div class="grid-2">
+      ${measures.map(m => {
+        const delta = (m.v && m.p) ? (m.v - m.p) : null;
+        const dc = delta===null?'':delta<0?'#47e8a8':delta>0?'#e87347':'#8a8070';
+        return `<div class="measure">
+          <div><div class="m-label">${m.label}</div><div class="m-value">${m.v}<span class="m-unit">${m.u}</span></div></div>
+          ${delta!==null?`<div class="m-delta" style="color:${dc}">${delta>0?'+':''}${delta.toFixed(1)}</div>`:''}
+        </div>`;
+      }).join('')}
+    </div>` : ''}
+    <div class="nutrition-box">
+      <div class="n-label">Nutrizione</div>
+      <div class="grid-3">
+        <div class="nutrition-item"><div class="ni-label">TDEE</div><div class="ni-value">${tdee}<span class="ni-unit">kcal</span></div></div>
+        <div class="nutrition-item"><div class="ni-label">Intake</div><div class="ni-value">${intake}<span class="ni-unit">kcal</span></div></div>
+        <div class="nutrition-item"><div class="ni-label">Proteine</div><div class="ni-value">${latest.proteins||'—'}<span class="ni-unit">g</span></div></div>
+      </div>
+      ${latest.proteins ? `<div class="nutrition-badge">✓ ${protRatio}g/kg · Target ≥${targetProt}g (1.8g/kg)</div>` : ''}
+    </div>
+  `;
+}
+
+function renderGrafico() {
+  const fields = getFields();
+  const field  = fields.find(f => f.key === currentMetric);
+  const points = entries.filter(e => { const v=e[currentMetric]; return typeof v==='number'&&v>0&&isFinite(v); });
+
+  const pillsHtml = fields.map(f => `
+    <button class="pill ${currentMetric===f.key?'active':''}"
+      style="${currentMetric===f.key?`background:${f.color};border-color:${f.color};color:#0f0d09`:''}"
+      onclick="setMetric('${f.key}')">${f.label}</button>
+  `).join('');
+
+  let statsHtml = '';
+  if (points.length >= 2) {
+    const vals  = points.map(e => e[currentMetric]);
+    const delta = vals[vals.length-1] - vals[0];
+    const dc    = delta<0?'#47e8a8':delta>0?'#e87347':'#8a8070';
+    statsHtml = `<div class="chart-stats">
+      <div class="chart-stat"><div class="cs-label">Inizio</div><div class="cs-value">${vals[0]} ${field.unit}</div></div>
+      <div class="chart-stat"><div class="cs-label">Attuale</div><div class="cs-value">${vals[vals.length-1]} ${field.unit}</div></div>
+      <div class="chart-stat"><div class="cs-label">Totale</div><div class="cs-value" style="color:${dc}">${delta>=0?'+':''}${delta.toFixed(1)} ${field.unit}</div></div>
+    </div>`;
+  }
+
+  return `
+    <div class="pills">${pillsHtml}</div>
+    ${points.length < 2
+      ? `<div class="chart-empty">Aggiungi almeno 2 misurazioni di<br><span style="color:${field.color}">${field.label}</span><br>per vedere il grafico.</div>`
+      : `<div class="chart-wrap">
+          <div class="chart-label">${field.label} — ${points.length} misurazioni</div>
+          <div class="chart-canvas-wrap"><canvas id="mainChart"></canvas></div>
+        </div>${statsHtml}`
+    }
+  `;
+}
+
+function renderStorico() {
+  if (!entries.length) return '<p style="color:var(--muted);font-size:12px;text-align:center;padding:40px 0">Nessuna misurazione.</p>';
+  return `
+    <p style="font-size:10px;color:var(--muted);margin-bottom:11px">${entries.length} misurazioni · tocca 🗑 per eliminare</p>
+    ${[...entries].reverse().map(e => `
+      <div class="history-entry">
+        <div class="history-header">
+          <div class="history-date">${fmtDate(e.date)}</div>
+          <div class="history-meta">
+            ${e.note?`<div class="history-note">${e.note}</div>`:''}
+            <button class="delete-btn" onclick="deleteEntry('${e.date}')">🗑</button>
+          </div>
+        </div>
+        <div class="history-measures">
+          ${[{l:'Peso',v:e.weight,u:'kg'},{l:'Vita',v:e.waist,u:'cm'},{l:'Fianchi',v:e.hips,u:'cm'},{l:'Petto',v:e.chest,u:'cm'},{l:'Bicipite',v:e.bicep,u:'cm'},{l:'Grasso',v:e.bodyFat,u:'%'}]
+            .filter(m=>m.v)
+            .map(m=>`<div class="hm-item"><span class="hm-label">${m.l}: </span><span class="hm-val">${m.v}${m.u}</span></div>`)
+            .join('')}
+        </div>
+      </div>
+    `).join('')}
+    <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
+      <p style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:10px">Backup</p>
+      <button class="action-btn" onclick="exportData()">📤 Esporta JSON</button>
+      <button class="action-btn" onclick="triggerImport()">📥 Importa JSON</button>
+      <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)">
+    </div>
+  `;
+}
+
+function renderAggiungi() {
+  const latest = getLatest();
+  const ph = (k) => latest?.[k] ? `${latest[k]}` : '';
+  return `
+    <p style="font-size:10px;color:var(--muted);margin-bottom:14px">Compila solo i campi misurati. I valori precedenti vengono mantenuti.</p>
+    <div class="form-section">Data</div>
+    <input type="date" class="form-input" id="f-date" value="${today()}">
+
+    <div class="form-section">Peso & Composizione</div>
+    <div class="grid-2">
+      <div><label class="form-label">Peso (kg)</label><input type="number" step="0.1" class="form-input" id="f-weight" placeholder="${ph('weight')}"></div>
+      <div><label class="form-label">% Grasso</label><input type="number" step="0.1" class="form-input" id="f-bodyFat" placeholder="${ph('bodyFat')}"></div>
+      <div><label class="form-label">Collo (cm)</label><input type="number" step="0.1" class="form-input" id="f-neck" placeholder="${ph('neck')}"></div>
+    </div>
+
+    <div class="form-section">Circonferenze (cm)</div>
+    <div class="grid-2">
+      ${[['chest','Petto'],['bicep','Bicipite'],['waistHigh','Vita Alta'],['waist','Vita'],['waistLow','Vita Bassa'],['hips','Fianchi'],['thighHigh','Coscia Alta'],['thigh','Coscia'],['thighLow','Coscia Bassa']]
+        .map(([k,l])=>`<div><label class="form-label">${l}</label><input type="number" step="0.1" class="form-input" id="f-${k}" placeholder="${ph(k)}"></div>`).join('')}
+    </div>
+
+    <div class="form-section">Nutrizione & Attività</div>
+    <div class="grid-3">
+      <div><label class="form-label">Calorie</label><input type="number" class="form-input" id="f-calories" placeholder="${ph('calories')||profile?.intake||''}"></div>
+      <div><label class="form-label">Proteine g</label><input type="number" class="form-input" id="f-proteins" placeholder="${ph('proteins')}"></div>
+      <div><label class="form-label">Passi</label><input type="number" class="form-input" id="f-steps" placeholder="${ph('steps')||profile?.stepsAvg||''}"></div>
+    </div>
+
+    <div class="form-section">Nota</div>
+    <input type="text" class="form-input" id="f-note" placeholder="es. Settimana difficile...">
+
+    <button class="save-btn" id="save-btn" onclick="saveEntry()">Salva misurazione</button>
+  `;
+}
+
+function renderImpostazioni() {
+  if (!profile) return '';
+  const goalLabels = { cut:'Perdere grasso', recomp:'Ricomposizione', bulk:'Aumentare massa', maintain:'Mantenimento' };
+  const sexLabel   = profile.sex === 'M' ? 'Maschio' : 'Femmina';
+  return `
+    <div class="settings-card">
+      <div class="settings-title">Profilo</div>
+      ${[
+        ['Nome',     profile.name||'—'],
+        ['Età',      profile.age+' anni'],
+        ['Sesso',    sexLabel],
+        ['Altezza',  profile.height+' cm'],
+        ['Obiettivo',goalLabels[profile.goal]||'—'],
+      ].map(([k,v])=>`<div class="settings-row"><span class="settings-key">${k}</span><span class="settings-val">${v}</span></div>`).join('')}
+    </div>
+
+    <div class="settings-card">
+      <div class="settings-title">Calorie & Attività</div>
+      ${[
+        ['TDEE',    profile.tdee+' kcal'],
+        ['Intake',  profile.intake+' kcal'],
+        ['Deficit', (profile.tdee-profile.intake)+' kcal'],
+        ['Passi medi', profile.stepsAvg?.toLocaleString()],
+      ].map(([k,v])=>`<div class="settings-row"><span class="settings-key">${k}</span><span class="settings-val">${v}</span></div>`).join('')}
+    </div>
+
+    <div class="settings-card">
+      <div class="settings-title">Modifica TDEE / Intake</div>
+      <div class="grid-2" style="margin-bottom:10px">
+        <div><label class="form-label">TDEE (kcal)</label><input type="number" class="form-input" id="s-tdee" value="${profile.tdee}"></div>
+        <div><label class="form-label">Intake (kcal)</label><input type="number" class="form-input" id="s-intake" value="${profile.intake}"></div>
+      </div>
+      <button class="action-btn" onclick="updateCalories()">Aggiorna calorie</button>
+    </div>
+
+    <div style="margin-top:6px">
+      <button class="action-btn" onclick="exportData()">📤 Esporta dati JSON</button>
+      <button class="action-btn" onclick="triggerImport()">📥 Importa dati JSON</button>
+      <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)">
+      <button class="action-btn danger" style="margin-top:8px" onclick="confirmReset()">🗑 Reset completo</button>
+    </div>
+  `;
+}
+
+// ── CHART ─────────────────────────────────────────────────────────────────────
+function drawChart() {
+  const canvas = document.getElementById('mainChart');
+  if (!canvas) return;
+  if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+  const fields = getFields();
+  const field  = fields.find(f => f.key === currentMetric);
+  const points = entries.filter(e => { const v=e[currentMetric]; return typeof v==='number'&&v>0&&isFinite(v); });
+
+  chartInstance = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels: points.map(e => fmtDate(e.date)),
+      datasets: [{ data: points.map(e => e[currentMetric]), borderColor: field.color, backgroundColor: field.color+'18', borderWidth:2.5, pointBackgroundColor:field.color, pointRadius:5, pointHoverRadius:7, tension:0.3, fill:true }]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins: {
+        legend:{display:false},
+        tooltip:{ backgroundColor:'#1a1710', borderColor:'rgba(232,197,71,0.3)', borderWidth:1, titleColor:'#e8c547', bodyColor:'#f0ece0', callbacks:{ label: ctx=>`${ctx.parsed.y} ${field.unit}` } }
+      },
+      scales: {
+        x:{ grid:{color:'rgba(255,255,255,0.05)'}, ticks:{color:'#6a6050',font:{size:9,family:'JetBrains Mono'}} },
+        y:{ grid:{color:'rgba(255,255,255,0.05)'}, ticks:{color:'#6a6050',font:{size:9,family:'JetBrains Mono'}} }
+      }
+    }
+  });
+}
+
+// ── ACTIONS ───────────────────────────────────────────────────────────────────
+function setView(v) {
+  currentView = v;
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === v));
+  render();
+}
+
+function setMetric(m) { currentMetric = m; render(); }
+
+function saveEntry() {
+  const date = document.getElementById('f-date')?.value;
+  if (!date) { showToast('Inserisci una data'); return; }
+  const existing = entries.find(e => e.date === date) || {};
+  const entry = { ...existing, date, note: document.getElementById('f-note')?.value || '' };
+  const fields = ['weight','bodyFat','neck','chest','bicep','waistHigh','waist','waistLow','hips','thighHigh','thigh','thighLow','calories','proteins','steps'];
+  fields.forEach(k => {
+    const el = document.getElementById(`f-${k}`);
+    if (!el || el.value === '') return;
+    const p = parseFloat(el.value);
+    if (!isNaN(p)) entry[k] = p;
+  });
+  entries = [...entries.filter(e => e.date !== date), entry].sort((a,b)=>a.date.localeCompare(b.date));
+  saveEntries();
+  document.getElementById('last-date').textContent = fmtDate(entries[entries.length-1].date);
+  const btn = document.getElementById('save-btn');
+  if (btn) { btn.textContent='✓ Salvato!'; btn.classList.add('saved'); }
+  showToast('✓ Misurazione salvata!');
+  setTimeout(() => setView('dashboard'), 1100);
+}
+
+function deleteEntry(date) {
+  if (!confirm(`Eliminare la misurazione del ${fmtDate(date)}?`)) return;
+  entries = entries.filter(e => e.date !== date);
+  saveEntries();
+  render();
+  showToast('Eliminata');
+}
+
+function updateCalories() {
+  const tdee   = parseInt(document.getElementById('s-tdee')?.value);
+  const intake = parseInt(document.getElementById('s-intake')?.value);
+  if (!tdee || !intake) { showToast('Inserisci entrambi i valori'); return; }
+  profile.tdee   = tdee;
+  profile.intake = intake;
+  saveProfile();
+  showToast('✓ Aggiornato!');
+}
+
+function exportData() {
+  const data = { profile, entries };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type:'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = `body-tracker-${today()}.json`; a.click();
+  URL.revokeObjectURL(url);
+  showToast('📤 Esportato!');
+}
+
+function triggerImport() { document.getElementById('import-file')?.click(); }
+
+function importData(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const parsed = JSON.parse(ev.target.result);
+      if (parsed.entries && Array.isArray(parsed.entries)) {
+        entries = parsed.entries.sort((a,b)=>a.date.localeCompare(b.date));
+        if (parsed.profile) { profile = parsed.profile; saveProfile(); }
+        saveEntries();
+        render();
+        showToast(`✓ ${entries.length} misurazioni importate!`);
+      } else if (Array.isArray(parsed)) {
+        entries = parsed.sort((a,b)=>a.date.localeCompare(b.date));
+        saveEntries(); render();
+        showToast(`✓ ${entries.length} misurazioni importate!`);
+      } else throw new Error();
+    } catch { showToast('❌ File non valido'); }
+  };
+  reader.readAsText(file);
+}
+
+function confirmReset() {
+  if (!confirm('Cancellare TUTTO? Profilo e misurazioni verranno eliminati.')) return;
+  localStorage.removeItem(KEY_PROFILE);
+  localStorage.removeItem(KEY_ENTRIES);
+  location.reload();
+}
+
+// ── RENDER ────────────────────────────────────────────────────────────────────
+function render() {
+  if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+  const c = document.getElementById('content');
+  if (currentView === 'dashboard')     c.innerHTML = renderDashboard();
+  else if (currentView === 'grafico')  { c.innerHTML = renderGrafico(); drawChart(); }
+  else if (currentView === 'storico')  c.innerHTML = renderStorico();
+  else if (currentView === 'aggiungi') c.innerHTML = renderAggiungi();
+  else if (currentView === 'impostazioni') c.innerHTML = renderImpostazioni();
+}
+
+// ── BOOT ──────────────────────────────────────────────────────────────────────
+loadAll();
+if (!profile) {
+  showOnboarding();
+} else {
+  initApp();
+}
+</script>
+
+</body>
+</html>
